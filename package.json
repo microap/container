@@ -11,6 +11,7 @@
     "tsconfig.json",
     "babel.config.js"
   ],
+  "bin": {"container": "./bin/container"},
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
