@@ -1,0 +1,87 @@
+#! /usr/bin/env node
+
+const fs = require('fs')
+const path = require('path')
+const shelljs = require('shelljs')
+const merge = require('webpack-merge')
+const currentProjectDir = process.cwd()
+const currentConfigDir = path.relative(currentProjectDir, '../config')
+const currentConfig = require(currentConfigDir)(merge)
+const currentProjectSourceDir = path.join(currentProjectDir, currentConfig.sourceRoot)
+
+const containerProjectDir = path.resolve(__dirname, '..')
+const containerConfigDir = path.relative(
+  currentProjectDir, `../${path.relative(currentProjectDir, `${containerProjectDir}/config`)}`
+)
+const containerConfig = require(containerConfigDir)(merge)
+const containerProjectSourceDir = path.join(containerProjectDir, containerConfig.sourceRoot)
+
+const sourceArgs = process.argv.slice(2)
+
+function readlinkSync(filename) {
+  try {
+    return fs.readlinkSync(filename)
+  } catch (e) {}
+}
+
+function linkSync() {
+  const files = fs.readdirSync(currentProjectSourceDir)
+  files.forEach((filename) => {
+    const shadowFile = path.join(containerProjectSourceDir, filename)
+    try {
+      const targetFile = readlinkSync(shadowFile)
+      if (targetFile) {
+        fs.unlinkSync(shadowFile)
+      }
+      const file = path.join(currentProjectSourceDir, filename)
+      fs.symlinkSync(file, shadowFile)
+    } catch (e) { }
+  })
+}
+
+class CLI {
+
+  run() {
+    const command = sourceArgs[0]
+    try {
+      this[command]?.()
+    } catch (e) {
+      console.log(e)
+    }
+  }
+
+  watch() {
+    fs.watch(currentProjectSourceDir, (eventType, filename) => {
+      const file = path.join(currentProjectSourceDir, filename)
+      const shadowFile = path.join(containerProjectSourceDir, filename)
+      if (eventType === 'rename') {
+        if (!fs.existsSync(file)) {
+          try {
+            const targetFile = readlinkSync(shadowFile)
+            if (targetFile) {
+              fs.unlinkSync(shadowFile)
+            }
+          } catch (e) { }
+        } else {
+          fs.symlinkSync(file, shadowFile)
+        }
+      }
+    })
+    this.taro(true)
+  }
+
+  build() {
+    console.log(1111)
+    // linkSync()
+    // this.taro()
+  }
+
+  taro(dev) {
+    const args = (dev ? sourceArgs.concat('--watch') : sourceArgs).join(' ')
+    shelljs.exec(`npx @tarojs/cli ${args}`)
+  }
+}
+
+new CLI().run()
+
+
