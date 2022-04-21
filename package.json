@@ -1,6 +1,6 @@
 {
   "name": "@microap/container",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "微信小程序容器",
   "files": [
     "bin",
