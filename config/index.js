@@ -1,5 +1,5 @@
 const config = {
-  projectName: 'container',
+  projectName: 'taro-app',
   date: '2022-4-20',
   designWidth: 750,
   deviceRatio: {
@@ -7,8 +7,8 @@ const config = {
     750: 1,
     828: 1.81 / 2
   },
-  sourceRoot:"src",
-  outputRoot:"../../taro-app/dist",
+  sourceRoot:"template",
+  outputRoot:"dist",
   plugins: [],
   defineConstants: {
   },

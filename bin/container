@@ -6,26 +6,28 @@ const { exec } = require('child_process')
 const merge = require('webpack-merge')
 // const shelljs = require('shelljs')
 const currentProjectDir = process.cwd()
+const containerProjectDir = path.resolve(__dirname, '..')
+const relativePath = path.relative(containerProjectDir, currentProjectDir)
+const tempContainerSourceDir = '.ty-miniapp'
+const theContainerSourceDir = 'template'
+
 const currentConfigFilename = path.join(currentProjectDir, 'config/index.js')
 const currentConfig = require(currentConfigFilename)(merge)
 const currentProjectSourceDir = path.join(currentProjectDir, currentConfig.sourceRoot)
 
-const containerProjectDir = path.resolve(__dirname, '..')
 const containerConfigFilename = path.join(containerProjectDir, 'config/index.js')
-const containerConfig = require(containerConfigFilename)(merge)
-const containerProjectSourceDirTemp = path.join(containerProjectDir, 'template')
-const containerProjectSourceDir = path.join(containerProjectDir, containerConfig.sourceRoot)
+const containerProjectSourceDirTemp = path.join(containerProjectDir, theContainerSourceDir)
+const containerProjectSourceDir = path.join(containerProjectDir, relativePath, tempContainerSourceDir)
 const containerProjectPagesDir = '__pages'
 
 function updateContainerConfig() {
   try {
-    const finalDist = path.join(path.relative(containerProjectDir, currentProjectDir), currentConfig.outputRoot)
+    const finalDist = path.join(relativePath, currentConfig.outputRoot)
+    const finalSrc = path.join(relativePath, tempContainerSourceDir)
     const content =
       fs.readFileSync(containerConfigFilename, 'utf-8').toString()
-      .replace(/((?:'|")?sourceRoot(?:'|")?[\s\n]*\:)[^,]+?(,|\})/m, `$1"${currentConfig.sourceRoot}"$2`)
+      .replace(/((?:'|")?sourceRoot(?:'|")?[\s\n]*\:)[^,]+?(,|\})/m, `$1"${finalSrc}"$2`)
       .replace(/((?:'|")?outputRoot(?:'|")?[\s\n]*\:)[^,]+?(,|\})/m, `$1"${finalDist}"$2`)
-
-
     fs.writeFileSync(containerConfigFilename, content)
   } catch (e) {}
 }
@@ -145,12 +147,11 @@ class CLI {
 }
 
 // TODO 自动合并配置  or 由具体项目覆盖容器配置
-const argv = require('minimist')(sourceArgs)
+// const argv = require('minimist')(sourceArgs)
 
 fs.rmSync(containerProjectSourceDir, { recursive: true, force: true })
 fs.cpSync(containerProjectSourceDirTemp, containerProjectSourceDir, { recursive: true, force: true })
 
-// 根据当前项目Config，更新容器Config，使生成dist是目录在当前项目的根目录下
 updateContainerConfig()
 
 new CLI().run()
