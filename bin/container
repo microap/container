@@ -2,8 +2,9 @@
 
 const fs = require('fs')
 const path = require('path')
-const shelljs = require('shelljs')
+const { exec } = require('child_process')
 const merge = require('webpack-merge')
+// const shelljs = require('shelljs')
 const currentProjectDir = process.cwd()
 const currentConfigFilename = path.join(currentProjectDir, 'config/index.js')
 const currentConfig = require(currentConfigFilename)(merge)
@@ -13,6 +14,7 @@ const containerProjectDir = path.resolve(__dirname, '..')
 const containerConfigFilename = path.join(containerProjectDir, 'config/index.js')
 const containerConfig = require(containerConfigFilename)(merge)
 const containerProjectSourceDir = path.join(containerProjectDir, containerConfig.sourceRoot)
+const containerProjectPagesDir = '__pages'
 
 function updateContainerConfig() {
   try {
@@ -24,45 +26,78 @@ function updateContainerConfig() {
   } catch (e) {}
 }
 
-function readlinkSync(filename) {
-  try {
-    return fs.readlinkSync(filename)
-  } catch (e) {}
-}
-
-function linkSync() {
-  const files = fs.readdirSync(currentProjectSourceDir)
+function copyProjectSource(sourceDir, level) {
+  const files = fs.readdirSync(sourceDir)
   files.forEach((filename) => {
-    const shadowFile = path.join(containerProjectSourceDir, filename)
-    try {
-      const targetFile = readlinkSync(shadowFile)
-      if (targetFile) {
-        fs.unlinkSync(shadowFile)
-      }
-      const file = path.join(currentProjectSourceDir, filename)
-      // console.log(file, shadowFile)
-      fs.symlinkSync(file, shadowFile)
-    } catch (e) { }
-  })
-}
-
-function watch() {
-  fs.watch(currentProjectSourceDir, (eventType, filename) => {
-    const file = path.join(currentProjectSourceDir, filename)
-    const shadowFile = path.join(containerProjectSourceDir, filename)
-    if (eventType === 'rename') {
-      if (!fs.existsSync(file)) {
-        try {
-          const targetFile = readlinkSync(shadowFile)
-          if (targetFile) {
-            fs.unlinkSync(shadowFile)
-          }
-        } catch (e) { }
+    const src = `${sourceDir}/${filename}`
+    if (isDir(src)) {
+      copyProjectSource(src, level ? path.join(level, filename) : filename)
+    } else {
+      const dest = `${containerProjectSourceDir}/${level ? level + '/' : ''}${filename}`
+      if (filename.indexOf('app.config') === 0) {
+        // 合并容器页面
+        concatContainerPages(src, dest)
       } else {
-        fs.symlinkSync(file, shadowFile)
+        fs.cpSync(src, dest, { force: true, recursive: true })
       }
     }
   })
+}
+
+function isDir(file) {
+  return fs.existsSync(file) ? !fs.statSync(file).isFile() : false
+}
+function isEmptyDir(file) {
+  return isDir(file) && fs.readdirSync(file).length === 0
+}
+
+function watch() {
+  console.log(`监听${currentProjectSourceDir}中文件修改...`)
+  fs.watch(currentProjectSourceDir, { recursive: true }, (eventType, filename) => {
+    console.log('文件变更: ', eventType, filename)
+    const file = path.join(currentProjectSourceDir, filename)
+    const shadowFile = path.join(containerProjectSourceDir, filename)
+
+    if (eventType === 'rename') {
+      if (!fs.existsSync(file)) {
+        if (fs.existsSync(shadowFile)) {
+          fs.rmSync(shadowFile, { recursive: true, force: true })
+        }
+        let p = path.join(shadowFile, '..')
+        while(isEmptyDir(p)) {
+          if (containerProjectSourceDir === p) {
+            break
+          }
+          fs.rmSync(p, { recursive: true, force: true })
+          p = path.join(p, '..')
+        }
+      } else {
+        if (!isEmptyDir(file) || !isDir(file)) {
+          if (filename.indexOf('app.config') === 0) {
+            // 合并容器页面
+            concatContainerPages(file, shadowFile)
+          } else {
+            fs.cpSync(file, shadowFile, { force: true, recursive: true })
+          }
+        }
+      }
+    } else {
+      if (filename.indexOf('app.config') === 0) {
+        // 合并容器页面
+        concatContainerPages(file, shadowFile)
+      } else {
+        fs.cpSync(file, shadowFile, { force: true, recursive: true })
+      }
+    }
+  })
+}
+
+function concatContainerPages(src, dest) {
+  const files = fs.readdirSync(path.join(containerProjectSourceDir, containerProjectPagesDir))
+  const pages = files.map(p => `"${containerProjectPagesDir}/${p}/index"`)
+  let content = fs.readFileSync(src, 'utf-8').toString()
+  content = content.replace(/((?:'|")?pages(?:'|")?[\s\n]*\:[\s\n]*\[)/m, `$1${pages.join(',')},`)
+  fs.writeFileSync(dest, content, 'utf-8')
 }
 
 const sourceArgs = process.argv.slice(2)
@@ -79,24 +114,33 @@ class CLI {
   }
 
   watch() {
-    linkSync()
+    copyProjectSource(currentProjectSourceDir)
     watch()
     this.taro()
   }
 
   build() {
-    linkSync()
+    copyProjectSource(currentProjectSourceDir)
     this.taro()
   }
 
   taro() {
-    // 根据当前项目Config，更新容器Config，使生成dist是目录在当前项目的根目录下
-    updateContainerConfig()
     const args = sourceArgs.join(' ')
-    shelljs.exec(`cd ${containerProjectDir} && npx --node-options=--inspect-brk @tarojs/cli ${args}`)
+    const inspect = !args.includes('--inspect') ? !args.includes('--inspect-brk') ? null : '--inspect-brk' : '--inspect'
+    const cmd = !!inspect ? `npx --node-options=${inspect} @tarojs1/cli ${args}` : `npx @tarojs/cli ${args}`
+
+    exec(cmd, { cwd: containerProjectDir }, (err, stdout, stderr) => {
+      if (err) {
+        return console.log(err)
+      }
+      console.log(stdout, stderr)
+    })
+
+    // shelljs.exec(`cd ${containerProjectDir} && ${cmd}`)
   }
 }
 
+// 根据当前项目Config，更新容器Config，使生成dist是目录在当前项目的根目录下
+updateContainerConfig()
+
 new CLI().run()
-
-
