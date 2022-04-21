@@ -10,7 +10,8 @@
     "global.d.ts",
     "tsconfig.json",
     "babel.config.js",
-    "app.config.json"
+    "app.config.json",
+    "template"
   ],
   "main": "app.config.json",
   "bin": {
