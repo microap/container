@@ -13,7 +13,8 @@ const currentProjectSourceDir = path.join(currentProjectDir, currentConfig.sourc
 const containerProjectDir = path.resolve(__dirname, '..')
 const containerConfigFilename = path.join(containerProjectDir, 'config/index.js')
 const containerConfig = require(containerConfigFilename)(merge)
-const containerProjectSourceDir = path.join(containerProjectDir, containerConfig.sourceRoot)
+const containerProjectSourceDirTemp = path.join(containerProjectDir, containerConfig.sourceRoot)
+const containerProjectSourceDir = path.join(containerProjectDir, 'src')
 const containerProjectPagesDir = '__pages'
 
 function updateContainerConfig() {
@@ -139,6 +140,12 @@ class CLI {
     // shelljs.exec(`cd ${containerProjectDir} && ${cmd}`)
   }
 }
+
+// TODO 自动合并配置  or 由具体项目覆盖容器配置
+const argv = require('minimist')(sourceArgs)
+
+fs.rmSync(containerProjectSourceDir, { recursive: true, force: true })
+fs.cpSync(containerProjectSourceDirTemp, containerProjectSourceDir, { recursive: true, force: true })
 
 // 根据当前项目Config，更新容器Config，使生成dist是目录在当前项目的根目录下
 updateContainerConfig()
