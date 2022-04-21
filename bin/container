@@ -20,10 +20,13 @@ const containerProjectPagesDir = '__pages'
 function updateContainerConfig() {
   try {
     const finalDist = path.join(path.relative(containerProjectDir, currentProjectDir), currentConfig.outputRoot)
-    const containerConfigContnet = fs.readFileSync(containerConfigFilename, 'utf-8').toString()
-    const str = containerConfigContnet.replace(/((?:'|")?outputRoot(?:'|")?[\s\n]*\:)[^,]+?(,|\})/m, `$1"${finalDist}"$2`)
+    const content =
+      fs.readFileSync(containerConfigFilename, 'utf-8').toString()
+      .replace(/((?:'|")?sourceRoot(?:'|")?[\s\n]*\:)[^,]+?(,|\})/m, `$1"${currentConfig.sourceRoot}"$2`)
+      .replace(/((?:'|")?outputRoot(?:'|")?[\s\n]*\:)[^,]+?(,|\})/m, `$1"${finalDist}"$2`)
 
-    fs.writeFileSync(containerConfigFilename, str)
+
+    fs.writeFileSync(containerConfigFilename, content)
   } catch (e) {}
 }
 
