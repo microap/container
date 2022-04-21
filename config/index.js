@@ -7,7 +7,7 @@ const config = {
     750: 1,
     828: 1.81 / 2
   },
-  sourceRoot: 'template',
+  sourceRoot:"src",
   outputRoot:"../../taro-app/dist",
   plugins: [],
   defineConstants: {

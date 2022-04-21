@@ -13,8 +13,8 @@ const currentProjectSourceDir = path.join(currentProjectDir, currentConfig.sourc
 const containerProjectDir = path.resolve(__dirname, '..')
 const containerConfigFilename = path.join(containerProjectDir, 'config/index.js')
 const containerConfig = require(containerConfigFilename)(merge)
-const containerProjectSourceDirTemp = path.join(containerProjectDir, containerConfig.sourceRoot)
-const containerProjectSourceDir = path.join(containerProjectDir, 'src')
+const containerProjectSourceDirTemp = path.join(containerProjectDir, 'template')
+const containerProjectSourceDir = path.join(containerProjectDir, containerConfig.sourceRoot)
 const containerProjectPagesDir = '__pages'
 
 function updateContainerConfig() {
