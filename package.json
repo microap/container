@@ -59,7 +59,6 @@
     "@tarojs/react": "3.4.7",
     "@tarojs/runtime": "3.4.7",
     "@tarojs/taro": "3.4.7",
-    "minimist": "^1.2.6",
     "react": "^17.0.0",
     "react-dom": "^17.0.0"
   },
