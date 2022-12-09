@@ -62,14 +62,22 @@ function isEmptyDir(file) {
 }
 
 function watch() {
-  console.log(`监听 ${currentProjectSourceDir.replace(currentProjectDir, '.')} 中文件修改...`)
+  const actionDone = {}
   fs.watch(currentProjectSourceDir, { recursive: true }, (eventType, filename) => {
-    console.log('文件变更: ', eventType, filename)
+    // 同一文件修改偶尔会触发2次问题修复
     const file = path.join(currentProjectSourceDir, filename)
+    const isExistFile = fs.existsSync(file)
+    if (isExistFile) {
+      const stats = fs.statSync(file)
+      const seconds = +stats.mtime
+      if(actionDone[filename] == seconds) return
+      actionDone[filename] = seconds
+    }
     const shadowFile = path.join(containerProjectSourceDir, filename)
 
+    // 删除 重命名 的事件类型 都是 rename
     if (eventType === 'rename') {
-      if (!fs.existsSync(file)) {
+      if (!isExistFile) {
         if (fs.existsSync(shadowFile)) {
           fs.rmSync(shadowFile, { recursive: true, force: true })
         }
@@ -144,13 +152,15 @@ class CLI {
     const inspect = !args.includes('--inspect') ? !args.includes('--inspect-brk') ? null : '--inspect-brk' : '--inspect'
     const cmd = !!inspect ? `npx --node-options=${inspect} @tarojs1/cli ${args}` : `npx @tarojs/cli ${args}`
 
-    exec(cmd, { cwd: containerProjectDir }, (err, stdout, stderr) => {
+    const cp = exec(cmd, { cwd: containerProjectDir }, (err, stdout, stderr) => {
       if (err) {
         return console.log(err)
       }
       console.log(stdout)
       console.log(stderr)
     })
+    cp.stdout.on('data', (...args) => console.log(...args))
+    cp.stderr.on('data', (...args) => console.log(...args))
   }
 }
 
